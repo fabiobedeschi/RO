@@ -1,4 +1,3 @@
-import json
 from collections import defaultdict
 from typing import Union
 
@@ -19,18 +18,6 @@ class Graph:
             directed=True,
         )
     """
-
-    @staticmethod
-    def from_json(filename):
-        """
-        Create a graph from a json file.
-        """
-        with open(filename, mode="r") as f:
-            data = json.load(f)
-
-        edges = [(n1, n2, w) for n1 in data["edges"].keys() for n2, w in data["edges"][n1].items()]
-        directed = data["directed"]
-        return Graph(edges, directed)
 
     def __init__(self, edges=None, directed=False):
         self._edges = defaultdict(set)

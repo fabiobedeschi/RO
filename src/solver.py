@@ -1,4 +1,5 @@
 from src.graph import Graph
+from src.timer import timer
 
 
 class Solver:
