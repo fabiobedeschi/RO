@@ -7,19 +7,18 @@ from src.utils import graph_from_json
 def main():
     print("=" * 80, "Progetto Ricerca Operativa", "=" * 80, sep="\n")
 
-    g = graph_from_json("data/complete_02.json")
+    g = graph_from_json("data/graph_02.json")
 
     print("MST:")
-    s = Solver()
-    mst = s.find_mst(g)
-
+    s = Solver(g)
+    mst = s.find_mst()
+    print("nodes:", mst.get_all_nodes())
+    print("nodes count:", mst.get_node_count())
     print("edges:", mst.get_all_edges())
     print("edge count:", mst.get_edge_count())
     print("weight:", mst.get_total_weight())
-
-    mst.remove_edge('01', '02')
-    print("edges:", mst.get_all_edges())
-    print("edge count:", mst.get_edge_count())
+    print("leaf nodes:", mst.get_leaf_nodes())
+    print("leaf count:", mst.get_leaf_node_count())
 
 
 if "__main__" == __name__:
