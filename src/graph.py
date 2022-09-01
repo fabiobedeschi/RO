@@ -40,6 +40,21 @@ class Graph:
         if not self._directed:
             self._edges[node2].add((node1, weight))
 
+    def remove_edges(self, edges):
+        """
+        Remove multiple edges from the graph.
+        """
+        for node1, node2, weight in edges:
+            self.remove_edge(node1, node2, weight)
+
+    def remove_edge(self, node1, node2, weight=None):
+        """
+        Remove an edge from the graph.
+        """
+        self._edges[node1].discard((node2, weight or self.get_edge_weight(node1, node2)))
+        if not self._directed:
+            self._edges[node2].discard((node1, weight or self.get_edge_weight(node2, node1)))
+
     def get_edges(self, node) -> set:
         """
         Get the edges starting from a given node.
