@@ -52,7 +52,7 @@ class Graph:
 
     def remove_edge(self, node1, node2, weight=None):
         """
-        Remove an edge from the graph.
+        Remove an edge from the graph. If weight is provided, only the edge with that weight will be removed.
         """
         self._edges[node1].discard((node2, weight or self.get_edge_weight(node1, node2)))
         if not self._directed:
@@ -162,13 +162,13 @@ class Graph:
 
     def is_connected(self) -> bool:
         """
-        Check if the graph is connected.
+        Check if the graph is connected. Searches for a path between all pairs of different nodes.
         """
         return all({self.exists_path(n1, n2) for n1 in self.get_all_nodes() for n2 in self.get_all_nodes() if n1 != n2})
 
     def is_tree(self, nodes_count=None) -> bool:
         """
-        Check if the graph is a tree.
+        Check if the graph is a tree. A tree is graph having N nodes, N-1 edges and no cycles.
 
         nodes_count:
             The number of nodes in the graph.
@@ -181,17 +181,36 @@ class Graph:
 
     def is_spanning_tree(self, nodes_count=None) -> bool:
         """
-        Check if the graph is a spanning tree.
-
-        nodes_count:
-            The number of nodes in the graph.
-            Used to check for a spanning tree while constructing from another graph.
-            If not provided, the number of nodes will be inferred from the edges.
+        Check if the graph is a spanning tree. A spanning tree is a tree that connects all the nodes.
         """
         return self.is_tree(nodes_count) and self.is_connected()
 
     def get_total_weight(self) -> Union[int, float]:
         """
-        Get the total weight of the graph.
+        Get the total weight of the graph. Sum of all the edge weights.
         """
         return sum(weight for _, _, weight in self.get_all_edges())
+
+    def get_leaf_nodes(self) -> set:
+        """
+        Get the leaf nodes of the graph. A leaf node is a node with only one neighbor.
+        """
+        return {node for node in self.get_all_nodes() if len(self.get_neighbors(node)) == 1}
+
+    def get_leaf_node_count(self) -> int:
+        """
+        Get the number of leaf nodes in the graph.
+        """
+        return len(self.get_leaf_nodes())
+
+    def is_leaf_node(self, node) -> bool:
+        """
+        Check if the node is a leaf node.
+        """
+        return len(self.get_neighbors(node)) == 1
+
+    def get_degree(self, node) -> int:
+        """
+        Get the degree of the node. The number of neighbors of the node.
+        """
+        return len(self.get_neighbors(node))
