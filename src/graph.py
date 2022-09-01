@@ -31,6 +31,7 @@ class Graph:
         """
         for node1, node2, weight in edges:
             self.add_edge(node1, node2, weight)
+        return self
 
     def add_edge(self, node1, node2, weight):
         """
@@ -39,6 +40,7 @@ class Graph:
         self._edges[node1].add((node2, weight))
         if not self._directed:
             self._edges[node2].add((node1, weight))
+        return self
 
     def remove_edges(self, edges):
         """
@@ -46,6 +48,7 @@ class Graph:
         """
         for node1, node2, weight in edges:
             self.remove_edge(node1, node2, weight)
+        return self
 
     def remove_edge(self, node1, node2, weight=None):
         """
@@ -54,6 +57,7 @@ class Graph:
         self._edges[node1].discard((node2, weight or self.get_edge_weight(node1, node2)))
         if not self._directed:
             self._edges[node2].discard((node1, weight or self.get_edge_weight(node2, node1)))
+        return self
 
     def get_edges(self, node) -> set:
         """

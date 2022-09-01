@@ -17,6 +17,10 @@ def main():
     print("edge count:", mst.get_edge_count())
     print("weight:", mst.get_total_weight())
 
+    mst.remove_edge('01', '02')
+    print("edges:", mst.get_all_edges())
+    print("edge count:", mst.get_edge_count())
+
 
 if "__main__" == __name__:
     main()
