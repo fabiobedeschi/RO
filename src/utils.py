@@ -44,7 +44,8 @@ def print_graph_info(g: Graph, root: str = None):
     """
     Print information about a graph in console.
     """
-    root = sorted(g.get_all_nodes())[0]
+    root = root or sorted(g.get_all_nodes())[0]
+    print()
     print("nodes count:", g.get_node_count())
     print("weight:", g.get_total_weight())
     print("is tree:", g.is_tree())
