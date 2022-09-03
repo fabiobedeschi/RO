@@ -108,7 +108,7 @@ class Graph:
 
     def get_neighbors(self, node) -> set:
         """
-        Get the neighbors of the node.
+        Get the neighbors of the node. A neighbor of a node is another node that is directly connected to the first.
         """
         return {neighbor for _, neighbor, _ in self.get_edges(node)}
 
@@ -128,15 +128,15 @@ class Graph:
             node = stack.pop()
             if node in visited:
                 continue
-            visited.add(node)
-            stack.extend(self.get_neighbors(node))
             if node == node2:
                 return True
+            visited.add(node)
+            stack.extend(self.get_neighbors(node))
         return False
 
-    def has_cycle(self) -> bool:
+    def is_cyclic(self) -> bool:
         """
-        Check if the graph has a cycle.
+        Check if the graph has at least a cycle in it.
         """
         for node in self.get_all_nodes():
             visited = set()
@@ -158,7 +158,7 @@ class Graph:
         edges = self.get_all_edges()
         edges.add((node1, node2, 1))
         g = Graph(edges=edges, directed=self._directed)
-        return g.has_cycle()
+        return g.is_cyclic()
 
     def is_connected(self) -> bool:
         """
@@ -177,7 +177,7 @@ class Graph:
         """
         if nodes_count is None:
             nodes_count = self.get_node_count()
-        return (self.get_edge_count() == nodes_count - 1) and not self.has_cycle()
+        return (self.get_edge_count() == nodes_count - 1) and not self.is_cyclic()
 
     def is_spanning_tree(self, nodes_count=None) -> bool:
         """
@@ -191,17 +191,30 @@ class Graph:
         """
         return sum(weight for _, _, weight in self.get_all_edges())
 
-    def get_leaf_nodes(self) -> set:
+    def get_leaf_nodes(self, nodes=None) -> set:
         """
-        Get the leaf nodes of the graph. A leaf node is a node with only one neighbor.
+        Get the all leaf nodes of the graph. A leaf node is a node with only one neighbor.
         """
-        return {node for node in self.get_all_nodes() if len(self.get_neighbors(node)) == 1}
+        nodes = nodes or self.get_all_nodes()
+        return {node for node in nodes if len(self.get_neighbors(node)) == 1}
+
+    def get_leaf_nodes_from_root(self, root) -> set:
+        """
+        Get the all leaf nodes starting from a root. A leaf node is a node with only one neighbor.
+        """
+        return self.get_leaf_nodes(nodes=self.get_all_nodes() - {root})
 
     def get_leaf_node_count(self) -> int:
         """
         Get the number of leaf nodes in the graph.
         """
         return len(self.get_leaf_nodes())
+
+    def get_leaf_node_count_from_root(self, root) -> int:
+        """
+        Get the number of leaf nodes starting from a root.
+        """
+        return len(self.get_leaf_nodes_from_root(root))
 
     def is_leaf_node(self, node) -> bool:
         """
