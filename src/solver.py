@@ -46,6 +46,7 @@ class Solver:
         Start from a valid MST and try to reduce the number of leaf nodes by connecting them to their neighbors.
         This will decrease the number of leaf nodes but induce a cycle, which can be eliminated by removing the edge
         with the highest weight in it.
+        In the end this is a 2-switch local search.
         """
         mlcst = self.find_mst()
         if mlcst.get_leaf_node_count_from_root(root) <= max_leaf_count:
@@ -55,8 +56,13 @@ class Solver:
         # Initialize a stack with edges sorted by weight in descending order
         stack = self._sort_edges_by_weight(reverse=True)
         iter_count = 0
-        while stack and iter_count < self._greedy_max_iterations:
+        while stack:
             iter_count += 1
+            if iter_count > self._greedy_max_iterations:
+                print(f"WARNING: Reached max iterations! ({self._greedy_max_iterations})")
+                print(f"WARNING: Current solution could be a local minimum")
+                print()
+                break
             edge = (n1, n2, w) = stack.pop()
             if edge in mlcst.get_all_edges():
                 # If the edge is already in the tree, skip it
