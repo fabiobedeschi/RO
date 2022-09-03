@@ -54,9 +54,13 @@ class Graph:
         """
         Remove an edge from the graph. If weight is provided, only the edge with that weight will be removed.
         """
-        self._edges[node1].discard((node2, weight or self.get_edge_weight(node1, node2)))
+        self._edges[node1].discard(
+            (node2, weight or self.get_edge_weight(node1, node2))
+        )
         if not self._directed:
-            self._edges[node2].discard((node1, weight or self.get_edge_weight(node2, node1)))
+            self._edges[node2].discard(
+                (node1, weight or self.get_edge_weight(node2, node1))
+            )
         return self
 
     def get_edges(self, node) -> set:
@@ -86,7 +90,11 @@ class Graph:
         Get all the edges of the graph. Some edges may be omitted in undirected graphs.
         """
         edges = set()
-        for edge in {(n1, n2, w) for n1 in self.get_all_nodes() for _, n2, w in self.get_edges(n1)}:
+        for edge in {
+            (n1, n2, w)
+            for n1 in self.get_all_nodes()
+            for _, n2, w in self.get_edges(n1)
+        }:
             if not self._directed:
                 if edge[0] < edge[1]:
                     edges.add(edge)
@@ -120,7 +128,7 @@ class Graph:
 
     def exists_path(self, node1, node2):
         """
-        Check if a path exists between two nodes. Can't guarantee it is the shortest path.
+        Check if a path exists between two nodes (BF). Can't guarantee it is the shortest path.
         """
         visited = set()
         stack = [node1]
@@ -133,6 +141,30 @@ class Graph:
             visited.add(node)
             stack.extend(self.get_neighbors(node))
         return False
+
+    def find_path(self, node1, node2, visited=None) -> list:
+        """
+        Find a path between two nodes (DF). Can't guarantee it is the shortest path.
+        """
+        visited = visited or set()
+        visited.add(node1)
+        for neighbor in self.get_neighbors(node1):
+            if neighbor == node2:
+                return [node1, node2]
+            if neighbor in visited:
+                continue
+            path = self.find_path(neighbor, node2, visited)
+            if path:
+                return [node1] + path
+
+    def get_edges_in_path(self, path) -> set:
+        """
+        Get the edges in a path.
+        """
+        return {
+            (path[i], path[i + 1], self.get_edge_weight(path[i], path[i + 1]))
+            for i in range(len(path) - 1)
+        }
 
     def is_cyclic(self) -> bool:
         """
@@ -151,20 +183,18 @@ class Graph:
                     return True
         return False
 
-    def will_lead_to_cycle(self, node1, node2) -> bool:
-        """
-        Check if adding an edge between two nodes will lead to a cycle.
-        """
-        edges = self.get_all_edges()
-        edges.add((node1, node2, 1))
-        g = Graph(edges=edges, directed=self._directed)
-        return g.is_cyclic()
-
     def is_connected(self) -> bool:
         """
         Check if the graph is connected. Searches for a path between all pairs of different nodes.
         """
-        return all({self.exists_path(n1, n2) for n1 in self.get_all_nodes() for n2 in self.get_all_nodes() if n1 != n2})
+        return all(
+            {
+                self.exists_path(n1, n2)
+                for n1 in self.get_all_nodes()
+                for n2 in self.get_all_nodes()
+                if n1 != n2
+            }
+        )
 
     def is_tree(self, nodes_count=None) -> bool:
         """

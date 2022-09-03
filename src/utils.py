@@ -19,9 +19,41 @@ def graph_from_json(filename):
 
     validate(data=data, definition=schema)
 
-    edges = [(n1, n2, w) for n1 in data["edges"].keys() for n2, w in data["edges"][n1].items()]
+    edges = [
+        (n1, n2, w)
+        for n1 in data["edges"].keys()
+        for n2, w in data["edges"][n1].items()
+    ]
     directed = data["directed"]
     return Graph(edges, directed)
+
+
+def print_title(title: str, line_len: int = 80, centered: bool = True):
+    """
+    Print a title in console.
+    """
+    print(
+        "=" * line_len,
+        f"{' ' * (centered * (line_len - len(title)) // 2)}{title}",
+        "=" * line_len,
+        sep="\n",
+    )
+
+
+def print_graph_info(g: Graph, root: str = None):
+    """
+    Print information about a graph in console.
+    """
+    root = sorted(g.get_all_nodes())[0]
+    print("nodes count:", g.get_node_count())
+    print("weight:", g.get_total_weight())
+    print("is tree:", g.is_tree())
+    print("root:", root)
+    print("leaf node from root:", g.get_leaf_nodes_from_root(root))
+    print("leaf count from root:", g.get_leaf_node_count_from_root(root))
+    print("degree of root node:", g.get_degree(root))
+    print("edge count:", g.get_edge_count())
+    print("edges:", g.get_all_edges())
 
 
 def generate_random_data_file(node_count, complete=True, max_dim=100, filename=None):
@@ -29,7 +61,10 @@ def generate_random_data_file(node_count, complete=True, max_dim=100, filename=N
     Generate a random undirected graph data file.
     """
     z_fill_count = len(str(node_count))
-    nodes = [(str(i).zfill(z_fill_count), randint(0, max_dim), randint(0, max_dim)) for i in range(node_count)]
+    nodes = [
+        (str(i).zfill(z_fill_count), randint(0, max_dim), randint(0, max_dim))
+        for i in range(node_count)
+    ]
     edges = []
     for ((n1, x1, y1), (n2, x2, y2)) in combinations(nodes, 2):
         if complete or random() > 0.5:
