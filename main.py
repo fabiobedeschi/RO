@@ -3,13 +3,14 @@ from src.timer import timer
 from src.utils import graph_from_json, print_graph_info, print_title
 
 # TODO: Add command line arguments
+DATA_FILE = "data/sparse_13.json"
 MAX_LEAVES = 1
 DEBUG = False
 
 
 @timer
 def main():
-    g = graph_from_json("data/sparse_13.json")
+    g = graph_from_json(DATA_FILE)
     s = Solver(g)
 
     print_title("Graph info")

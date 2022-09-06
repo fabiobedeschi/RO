@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 from itertools import combinations
 from math import sqrt
 from random import random, randint
@@ -28,10 +29,12 @@ def graph_from_json(filename):
     return Graph(edges, directed)
 
 
-def print_title(title: str, line_len: int = 80, centered: bool = True):
+def print_title(title: str, line_len: int = None, centered: bool = True):
     """
     Print a title in console.
     """
+    (cols, rows) = shutil.get_terminal_size()
+    line_len = line_len or cols
     print(
         "=" * line_len,
         f"{' ' * (centered * (line_len - len(title)) // 2)}{title}",
