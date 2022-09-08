@@ -96,3 +96,11 @@ def generate_random_data_file(node_count, complete=True, max_dim=100, filename=N
 
     with open(filename, mode="w") as f:
         json.dump(data, f)
+
+
+def loop_generator():
+    """
+    Create a generator from an infinite loop.
+    """
+    while True:
+        yield

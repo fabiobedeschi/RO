@@ -6,16 +6,10 @@ from typing import Callable, Optional, Union
 from tqdm import tqdm
 
 from src.graph import Graph
+from src.timer import timer
+from src.utils import loop_generator
 
 Number = Union[int, float]
-
-
-def loop_generator():
-    """
-    Create a generator from an infinite loop.
-    """
-    while True:
-        yield
 
 
 class Solver:
@@ -42,6 +36,7 @@ class Solver:
                 break
         return mst
 
+    @timer
     def find_mlcst_greedy(
         self,
         max_leaves: int,
@@ -186,6 +181,7 @@ class Solver:
 
         return mlcst
 
+    @timer
     def find_mlcst_tabu(
         self,
         max_leaves: Optional[int],
@@ -359,6 +355,7 @@ class Solver:
 
         return best_mlcst
 
+    @timer
     def find_mlcst_sa(
         self,
         max_leaves: int,

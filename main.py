@@ -1,14 +1,14 @@
 from src.solver import Solver
-from src.timer import timer
 from src.utils import graph_from_json, print_graph_info, print_title
 
 # TODO: Add command line arguments
 DATA_FILE = "data/complete_03.json"
 MAX_LEAVES = 1
+ROOT = None
+HOT_STOP = True
 DEBUG = False
 
 
-@timer
 def main():
     g = graph_from_json(DATA_FILE)
     s = Solver(g)
@@ -23,12 +23,12 @@ def main():
     print_title("MLCST (greedy)")
     greedy_mlcst = s.find_mlcst_greedy(
         max_leaves=MAX_LEAVES,
-        root=None,
+        root=ROOT,
         max_iter=None,
         max_non_improving_iter=None,
         leaf_penalty=None,
         cost_function=None,
-        hot_stop=False,
+        hot_stop=HOT_STOP,
         debug=DEBUG,
     )
     print_graph_info(greedy_mlcst)
@@ -36,13 +36,13 @@ def main():
     print_title("MLCST (tabu)")
     tabu_mlcst = s.find_mlcst_tabu(
         max_leaves=MAX_LEAVES,
-        root=None,
+        root=ROOT,
         max_iter=None,
         max_non_improving_iter=None,
         max_tabu_size=None,
         leaf_penalty=None,
         cost_function=None,
-        hot_stop=False,
+        hot_stop=HOT_STOP,
         debug=DEBUG,
     )
     print_graph_info(tabu_mlcst)
@@ -50,13 +50,13 @@ def main():
     print_title("MLCST (simulated annealing)")
     tabu_mlcst = s.find_mlcst_sa(
         max_leaves=MAX_LEAVES,
-        root=None,
+        root=ROOT,
         leaf_penalty=None,
         cost_function=None,
         initial_temperature=None,
         cooling_rate=None,
         cooling_factor=None,
-        hot_stop=False,
+        hot_stop=HOT_STOP,
         debug=DEBUG,
     )
     print_graph_info(tabu_mlcst)
