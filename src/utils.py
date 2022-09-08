@@ -4,11 +4,14 @@ import shutil
 from itertools import combinations
 from math import sqrt
 from random import random, randint
+from typing import Union
 
 from fastjsonschema import validate
 
 from src.graph import Graph
 from src.schema import schema
+
+Number = Union[int, float]
 
 
 def graph_from_json(filename):

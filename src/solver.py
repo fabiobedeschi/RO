@@ -2,16 +2,14 @@ import os
 import random
 from copy import deepcopy
 from math import exp
-from typing import Callable, Optional, Union
+from typing import Callable, Optional
 
 from multiprocess import Pool
 from tqdm import tqdm
 
 from src.graph import Graph
 from src.timer import timer
-from src.utils import loop_generator
-
-Number = Union[int, float]
+from src.utils import loop_generator, Number
 
 
 class Solver:
