@@ -1,8 +1,10 @@
+import os
+import random
 from copy import deepcopy
 from math import exp
-from random import random
 from typing import Callable, Optional, Union
 
+from multiprocess import Pool
 from tqdm import tqdm
 
 from src.graph import Graph
@@ -17,10 +19,79 @@ class Solver:
     Solve different problems on a given graph
     """
 
-    def __init__(self, graph: Graph):
+    def __init__(self, graph: Graph, multiprocess: bool = False, cpu_count: int = None):
         self._graph = graph
+        self._multiprocess = multiprocess
+        if self._multiprocess:
+            self._pool = Pool(processes=cpu_count or os.cpu_count())
 
-    def find_mst(self) -> Graph:
+    def _explore_neighbourhood(self, t: Graph, root: str, cost_function: Callable):
+        swap_operations = set()
+
+        # Loop over the edges in the graph who are not in the current solution
+        for (n1, n2, w) in self._graph.get_all_edges():
+            if (n1, n2, w) in t.get_all_edges():
+                continue
+
+            if not any(leaf in {n1, n2} for leaf in t.get_leaf_nodes_from_root(root)):
+                # If none of the nodes in the edge is a leaf node, skip it
+                continue
+
+            cycle_edges = t.get_edges_in_path(path=t.find_path(n1, n2))
+            for (cn1, cn2, cw) in cycle_edges:
+                # Calculate the cost of the neighbor solution after the swap
+                tmp_mlcst = deepcopy(t)
+                tmp_mlcst.add_edge(n1, n2, w)
+                tmp_mlcst.remove_edge(cn1, cn2, cw)
+                swap_operations.add(
+                    ((n1, n2, w), (cn1, cn2, cw), cost_function(tmp_mlcst))
+                )
+
+        return swap_operations
+
+    def _explore_neighbourhood_multiprocess(
+        self, t: Graph, root: str, cost_function: Callable
+    ):
+        def _calculate_swap_gain(_e_in, _e_out, _t, _cf):
+            _tmp_t = deepcopy(_t)
+            _tmp_t.add_edge(*_e_in)
+            _tmp_t.remove_edge(*_e_out)
+            return _e_in, _e_out, _cf(_tmp_t)
+
+        def _filter_swap_edges(_e_in, _t, _root):
+            _candidate_swaps = set()
+
+            if _e_in in _t.get_all_edges():
+                return _candidate_swaps
+            if not any(
+                leaf in {_e_in[0], _e_in[1]}
+                for leaf in _t.get_leaf_nodes_from_root(_root)
+            ):
+                return _candidate_swaps
+
+            for _e_out in _t.get_all_edges():
+                _candidate_swaps.add((_e_in, _e_out))
+
+            return _candidate_swaps
+
+        swap_operations = set()
+        candidate_swaps = set()
+
+        for candidate_swap in self._pool.starmap(
+            _filter_swap_edges,
+            [(e_in, t, root) for e_in in self._graph.get_all_edges()],
+        ):
+            candidate_swaps.update(candidate_swap)
+
+        for swap_operation in self._pool.starmap(
+            _calculate_swap_gain,
+            [(e_in, e_out, t, cost_function) for e_in, e_out in candidate_swaps],
+        ):
+            swap_operations.add(swap_operation)
+
+        return swap_operations
+
+    def find_mst(self, verbose=True) -> Graph:
         """
         Find the Minimum Spanning Tree using Kruskal's algorithm.
         """
@@ -28,7 +99,7 @@ class Solver:
         for (n1, n2, w) in tqdm(
             sorted(self._graph.get_all_edges(), key=lambda e: e[2]),
             desc="Finding MST",
-            leave=False,
+            disable=not verbose
         ):
             if not mst.exists_path(n1, n2):
                 mst.add_edge(n1, n2, w)
@@ -74,14 +145,14 @@ class Solver:
             lambda t: t.get_total_weight()
             + leaf_penalty
             * (
-                leaves - max_leaves
-                if (leaves := t.get_leaf_node_count_from_root(root)) > max_leaves
+                t.get_leaf_node_count_from_root(root) - max_leaves
+                if t.get_leaf_node_count_from_root(root) > max_leaves
                 else 0
             )
         )
 
         # Initialize the current solution with the MST of the graph
-        mlcst = self.find_mst()
+        mlcst = self.find_mst(verbose=False)
 
         # Initialize working variables
         iter_count = 0
@@ -93,7 +164,6 @@ class Solver:
             total=max_iter,
             desc="Finding MLCST",
             disable=debug,
-            leave=False,
         ):
             # Break out condition
             if (
@@ -105,7 +175,8 @@ class Solver:
             if debug:
                 print(
                     f"Iteration {iter_count + 1} / {max_iter} "
-                    f"(non-improving: {non_improving_iter_count + 1} / {max_non_improving_iter})"
+                    f"(non-improving: {non_improving_iter_count} / {max_non_improving_iter}) "
+                    f"(optimum: {current_optimum}) "
                 )
 
             iter_count += 1
@@ -121,28 +192,14 @@ class Solver:
 
             # Find the best operation to perform exploring the neighborhood of the current solution
             # Save elements as (edge_in, edge_out, cost_after_swap)
-            swap_operations = set()
-
-            # Loop over the edges in the graph who are not in the current solution
-            for (n1, n2, w) in self._graph.get_all_edges():
-                if (n1, n2, w) in mlcst.get_all_edges():
-                    continue
-
-                if not any(
-                    leaf in {n1, n2} for leaf in mlcst.get_leaf_nodes_from_root(root)
-                ):
-                    # If none of the nodes in the edge is a leaf node, skip it
-                    continue
-
-                cycle_edges = mlcst.get_edges_in_path(path=mlcst.find_path(n1, n2))
-                for (cn1, cn2, cw) in cycle_edges:
-                    # Calculate the cost of the neighbor solution after the swap
-                    tmp_mlcst = deepcopy(mlcst)
-                    tmp_mlcst.add_edge(n1, n2, w)
-                    tmp_mlcst.remove_edge(cn1, cn2, cw)
-                    swap_operations.add(
-                        ((n1, n2, w), (cn1, cn2, cw), cost_function(tmp_mlcst))
-                    )
+            if self._multiprocess:
+                swap_operations = self._explore_neighbourhood_multiprocess(
+                    t=mlcst, root=root, cost_function=cost_function
+                )
+            else:
+                swap_operations = self._explore_neighbourhood(
+                    t=mlcst, root=root, cost_function=cost_function
+                )
 
             # Find the best swap operation by sorting the swap operations by the calculated objective function
             best_swap = None
@@ -222,14 +279,14 @@ class Solver:
             lambda t: t.get_total_weight()
             + leaf_penalty
             * (
-                leaves - max_leaves
-                if (leaves := t.get_leaf_node_count_from_root(root)) > max_leaves
+                t.get_leaf_node_count_from_root(root) - max_leaves
+                if t.get_leaf_node_count_from_root(root) > max_leaves
                 else 0
             )
         )
 
         # Initialize the current solution with the MST of the graph
-        mlcst = self.find_mst()
+        mlcst = self.find_mst(verbose=False)
         best_mlcst = deepcopy(mlcst)
 
         # Initialize working variables
@@ -242,9 +299,8 @@ class Solver:
         for _ in tqdm(
             loop_generator(),
             total=max_iter,
-            desc="Finding MLCST",
+            desc=f"Finding MLCST",
             disable=debug,
-            leave=False,
         ):
             # Break out condition
             if (
@@ -257,7 +313,7 @@ class Solver:
                 print(
                     f"Iteration {iter_count + 1} / {max_iter} "
                     f"(non-improving: {non_improving_iter_count} / {max_non_improving_iter}) "
-                    f"(current optimum: {current_optimum})"
+                    f"(optimum: {current_optimum}) "
                 )
             iter_count += 1
             non_improving_iter_count += 1
@@ -273,28 +329,14 @@ class Solver:
 
             # Find the best operation to perform exploring the neighborhood of the current solution
             # Save elements as (edge_in, edge_out, cost_after_swap)
-            swap_operations = set()
-
-            # Loop over the edges in the graph who are not in the current solution
-            for (n1, n2, w) in self._graph.get_all_edges():
-                if (n1, n2, w) in mlcst.get_all_edges():
-                    continue
-
-                if not any(
-                    leaf in {n1, n2} for leaf in mlcst.get_leaf_nodes_from_root(root)
-                ):
-                    # If none of the nodes in the edge is a leaf node, skip it
-                    continue
-
-                cycle_edges = mlcst.get_edges_in_path(path=mlcst.find_path(n1, n2))
-                for (cn1, cn2, cw) in cycle_edges:
-                    # Calculate the cost of the neighbor solution after the swap
-                    tmp_mlcst = deepcopy(mlcst)
-                    tmp_mlcst.add_edge(n1, n2, w)
-                    tmp_mlcst.remove_edge(cn1, cn2, cw)
-                    swap_operations.add(
-                        ((n1, n2, w), (cn1, cn2, cw), cost_function(tmp_mlcst))
-                    )
+            if self._multiprocess:
+                swap_operations = self._explore_neighbourhood_multiprocess(
+                    t=mlcst, root=root, cost_function=cost_function
+                )
+            else:
+                swap_operations = self._explore_neighbourhood(
+                    t=mlcst, root=root, cost_function=cost_function
+                )
 
             # Find the best swap operation by sorting the swap operations by the calculated objective function
             best_swap = None
@@ -391,8 +433,8 @@ class Solver:
             lambda t: t.get_total_weight()
             + leaf_penalty
             * (
-                leaves - max_leaves
-                if (leaves := t.get_leaf_node_count_from_root(root)) > max_leaves
+                t.get_leaf_node_count_from_root(root) - max_leaves
+                if t.get_leaf_node_count_from_root(root) > max_leaves
                 else 0
             )
         )
@@ -417,7 +459,7 @@ class Solver:
                 raise ValueError("Cooling rate must be greater than 0")
 
         # Initialize the current solution with the MST of the graph
-        mlcst = self.find_mst()
+        mlcst = self.find_mst(verbose=False)
         best_mlcst = deepcopy(mlcst)
 
         # Initialize working variables
@@ -431,7 +473,11 @@ class Solver:
                 break
 
             if debug:
-                print(f"Iteration {iter_count + 1} " f"(T: {temperature})")
+                print(
+                    f"Iteration {iter_count + 1} "
+                    f"(T: {temperature}) "
+                    f"(optimum: {current_optimum}) "
+                )
             iter_count += 1
             non_improving_iter_count += 1
 
@@ -476,7 +522,7 @@ class Solver:
 
                     # If the neighbor solution is not better than the current solution,
                     # use it with a probability that decreases with the temperature
-                    if random() < exp(
+                    if random.random() < exp(
                         (current_optimum - cost_function(tmp_mlcst)) / temperature
                     ):
                         if debug:

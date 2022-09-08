@@ -2,16 +2,18 @@ from src.solver import Solver
 from src.utils import graph_from_json, print_graph_info, print_title
 
 # TODO: Add command line arguments
-DATA_FILE = "data/complete_03.json"
+DATA_FILE = "data/sparse_03.json"
+MULTIPROCESS = False
+CPU_COUNT = None
 MAX_LEAVES = 1
 ROOT = None
-HOT_STOP = True
+HOT_STOP = False
 DEBUG = False
 
 
 def main():
     g = graph_from_json(DATA_FILE)
-    s = Solver(g)
+    s = Solver(graph=g, multiprocess=MULTIPROCESS, cpu_count=CPU_COUNT)
 
     # print_title("Graph info")
     # print_graph_info(g)
