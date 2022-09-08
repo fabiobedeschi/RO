@@ -1,7 +1,7 @@
 from argparse import ArgumentParser
 
 from src.solver import Solver
-from src.utils import graph_from_json, print_graph_info, print_title, Number
+from src.utils import graph_from_json, print_graph_info, print_title
 
 
 def _init_parser():
@@ -37,7 +37,7 @@ def _init_parser():
         },
         {
             "flags": ["-p", "--leaf-penalty"],
-            "type": Number,
+            "type": float,
             "help": "Leaf penalty.",
         },
         {
@@ -52,7 +52,7 @@ def _init_parser():
         },
         {
             "flags": ["-T", "--initial-temp"],
-            "type": Number,
+            "type": float,
             "help": "Initial temperature.",
         },
         {
@@ -63,7 +63,7 @@ def _init_parser():
         },
         {
             "flags": ["-C", "--cooling-factor"],
-            "type": Number,
+            "type": float,
             "help": "Cooling factor.",
         },
         {
@@ -80,6 +80,13 @@ def _init_parser():
             "flags": ["-u", "--cpu-count"],
             "type": int,
             "help": "Number of CPUs to use.",
+        },
+        {
+            "flags": ["--mode"],
+            "type": str,
+            "help": "Search strategies to use.",
+            "choices": ["greedy", "tabu", "sa"],
+            "nargs": "+",
         },
     ]
 
@@ -108,6 +115,7 @@ def main(
     debug=None,
     multiprocess=None,
     cpu_count=None,
+    mode=None,
 ):
     g = graph_from_json(data_file)
     s = Solver(graph=g, multiprocess=multiprocess, cpu_count=cpu_count)
@@ -116,43 +124,46 @@ def main(
     mst = s.find_mst()
     print_graph_info(mst)
 
-    print_title("MLCST (greedy)")
-    greedy_mlcst = s.find_mlcst_greedy(
-        max_leaves=max_leaves,
-        root=root,
-        max_iter=max_iter,
-        max_non_improving_iter=max_non_improving_iter,
-        leaf_penalty=leaf_penalty,
-        hot_stop=hot_stop,
-        debug=debug,
-    )
-    print_graph_info(greedy_mlcst)
+    if mode is None or "greedy" in mode:
+        print_title("MLCST (greedy)")
+        greedy_mlcst = s.find_mlcst_greedy(
+            max_leaves=max_leaves,
+            root=root,
+            max_iter=max_iter,
+            max_non_improving_iter=max_non_improving_iter,
+            leaf_penalty=leaf_penalty,
+            hot_stop=hot_stop,
+            debug=debug,
+        )
+        print_graph_info(greedy_mlcst)
 
-    print_title("MLCST (tabu)")
-    tabu_mlcst = s.find_mlcst_tabu(
-        max_leaves=max_leaves,
-        root=root,
-        max_iter=max_iter,
-        max_non_improving_iter=max_non_improving_iter,
-        max_tabu_size=max_tabu_size,
-        leaf_penalty=leaf_penalty,
-        hot_stop=hot_stop,
-        debug=debug,
-    )
-    print_graph_info(tabu_mlcst)
+    if mode is None or "tabu" in mode:
+        print_title("MLCST (tabu)")
+        tabu_mlcst = s.find_mlcst_tabu(
+            max_leaves=max_leaves,
+            root=root,
+            max_iter=max_iter,
+            max_non_improving_iter=max_non_improving_iter,
+            max_tabu_size=max_tabu_size,
+            leaf_penalty=leaf_penalty,
+            hot_stop=hot_stop,
+            debug=debug,
+        )
+        print_graph_info(tabu_mlcst)
 
-    print_title("MLCST (simulated annealing)")
-    tabu_mlcst = s.find_mlcst_sa(
-        max_leaves=max_leaves,
-        root=root,
-        leaf_penalty=leaf_penalty,
-        initial_temperature=initial_temperature,
-        cooling_rate=cooling_rate,
-        cooling_factor=cooling_factor,
-        hot_stop=hot_stop,
-        debug=debug,
-    )
-    print_graph_info(tabu_mlcst)
+    if mode is None or "sa" in mode:
+        print_title("MLCST (simulated annealing)")
+        tabu_mlcst = s.find_mlcst_sa(
+            max_leaves=max_leaves,
+            root=root,
+            leaf_penalty=leaf_penalty,
+            initial_temperature=initial_temperature,
+            cooling_rate=cooling_rate,
+            cooling_factor=cooling_factor,
+            hot_stop=hot_stop,
+            debug=debug,
+        )
+        print_graph_info(tabu_mlcst)
 
 
 if "__main__" == __name__:
@@ -173,4 +184,5 @@ if "__main__" == __name__:
         debug=args.debug,
         multiprocess=args.multiprocess,
         cpu_count=args.cpu_count,
+        mode=args.mode,
     )
