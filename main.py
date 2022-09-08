@@ -3,7 +3,7 @@ from src.timer import timer
 from src.utils import graph_from_json, print_graph_info, print_title
 
 # TODO: Add command line arguments
-DATA_FILE = "data/sparse_13.json"
+DATA_FILE = "data/complete_03.json"
 MAX_LEAVES = 1
 DEBUG = False
 
@@ -13,8 +13,8 @@ def main():
     g = graph_from_json(DATA_FILE)
     s = Solver(g)
 
-    print_title("Graph info")
-    print_graph_info(g)
+    # print_title("Graph info")
+    # print_graph_info(g)
 
     print_title("MST")
     mst = s.find_mst()
@@ -28,6 +28,7 @@ def main():
         max_non_improving_iter=None,
         leaf_penalty=None,
         cost_function=None,
+        hot_stop=False,
         debug=DEBUG,
     )
     print_graph_info(greedy_mlcst)
@@ -41,6 +42,7 @@ def main():
         max_tabu_size=None,
         leaf_penalty=None,
         cost_function=None,
+        hot_stop=False,
         debug=DEBUG,
     )
     print_graph_info(tabu_mlcst)

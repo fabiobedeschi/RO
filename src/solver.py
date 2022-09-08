@@ -3,9 +3,19 @@ from math import exp
 from random import random
 from typing import Callable, Optional, Union
 
+from tqdm import tqdm
+
 from src.graph import Graph
 
 Number = Union[int, float]
+
+
+def loop_generator():
+    """
+    Create a generator from an infinite loop.
+    """
+    while True:
+        yield
 
 
 class Solver:
@@ -21,7 +31,11 @@ class Solver:
         Find the Minimum Spanning Tree using Kruskal's algorithm.
         """
         mst = Graph(directed=self._graph.is_directed())
-        for (n1, n2, w) in sorted(self._graph.get_all_edges(), key=lambda e: e[2]):
+        for (n1, n2, w) in tqdm(
+            sorted(self._graph.get_all_edges(), key=lambda e: e[2]),
+            desc="Finding MST",
+            leave=False,
+        ):
             if not mst.exists_path(n1, n2):
                 mst.add_edge(n1, n2, w)
             if mst.is_spanning_tree(nodes_count=self._graph.get_node_count()):
@@ -36,6 +50,7 @@ class Solver:
         max_non_improving_iter: Optional[int] = None,
         leaf_penalty: Optional[Number] = None,
         cost_function: Optional[Callable] = None,
+        hot_stop: bool = False,
         debug: bool = False,
     ) -> Graph:
         """
@@ -47,6 +62,7 @@ class Solver:
         :param max_non_improving_iter: The maximum number of non-improving iterations in a row, defaults to max_iter / 10
         :param leaf_penalty: The penalty for each leaf node in the tree (lower means more leaf nodes can be tolerated), defaults to the number of nodes in the graph
         :param cost_function: The cost function to use to evaluate the solution, defaults to the selected edges weight plus the number of exceeding leaf nodes times the leaf penalty
+        :param hot_stop: If True, the algorithm will immediately stops if the current respect the condition on the leaves, defaults to False
         :param debug: Whether to print debug information, defaults to False
 
         :return: The leaf constrained spanning tree
@@ -77,9 +93,20 @@ class Solver:
         non_improving_iter_count = 0
         current_optimum = cost_function(mlcst)
 
-        while (
-            iter_count < max_iter and non_improving_iter_count < max_non_improving_iter
+        for _ in tqdm(
+            loop_generator(),
+            total=max_iter,
+            desc="Finding MLCST",
+            disable=debug,
+            leave=False,
         ):
+            # Break out condition
+            if (
+                iter_count >= max_iter
+                or non_improving_iter_count >= max_non_improving_iter
+            ):
+                break
+
             if debug:
                 print(
                     f"Iteration {iter_count + 1} / {max_iter} "
@@ -89,7 +116,7 @@ class Solver:
             iter_count += 1
             non_improving_iter_count += 1
 
-            if mlcst.get_leaf_node_count_from_root(root) <= max_leaves:
+            if hot_stop and mlcst.get_leaf_node_count_from_root(root) <= max_leaves:
                 # If the number of leaf nodes is less than or equal to the max leaf count, exit the loop
                 if debug:
                     print(
@@ -168,6 +195,7 @@ class Solver:
         leaf_penalty: Optional[Number] = None,
         cost_function: Optional[Callable] = None,
         max_tabu_size: Optional[int] = None,
+        hot_stop: bool = False,
         debug: bool = False,
     ) -> Graph:
         """
@@ -177,9 +205,10 @@ class Solver:
         :param root: The root node of the tree, defaults to the node with the lowest identifier will be used
         :param max_iter: The maximum number of iterations in total, defaults to number of nodes in the graph times 100
         :param max_non_improving_iter: The maximum number of non-improving iterations in a row, defaults to max_iter / 10
-        :param max_tabu_size: The maximum size of the tabu list (FIFO stack), defaults to half of the number of nodes in the graph
+        :param max_tabu_size: The maximum size of the tabu list (FIFO stack), defaults to half of the number of edges in the graph
         :param leaf_penalty: The penalty for each leaf node in the tree (lower means more leaf nodes can be tolerated), defaults to the number of nodes in the graph
         :param cost_function: The cost function to use to evaluate the solution, defaults to the selected edges weight plus the number of exceeding leaf nodes times the leaf penalty
+        :param hot_stop: If True, the algorithm will immediately stops if the current respect the condition on the leaves, defaults to False
         :param debug: Whether to print debug information, defaults to False
 
         :return: The leaf constrained spanning tree
@@ -189,7 +218,7 @@ class Solver:
         root = root or sorted(self._graph.get_all_nodes())[0]
         max_iter = max_iter or self._graph.get_node_count() * 100
         max_non_improving_iter = max_non_improving_iter or max_iter // 10
-        max_tabu_size = max_tabu_size or self._graph.get_node_count() // 2
+        max_tabu_size = max_tabu_size or self._graph.get_edge_count() // 2
         leaf_penalty = leaf_penalty or max(
             map(lambda e: e[2], self._graph.get_all_edges())
         )
@@ -205,16 +234,29 @@ class Solver:
 
         # Initialize the current solution with the MST of the graph
         mlcst = self.find_mst()
+        best_mlcst = deepcopy(mlcst)
 
         # Initialize working variables
         iter_count = 0
         non_improving_iter_count = 0
         tabu_list = []
         current_optimum = cost_function(mlcst)
+        found_new_optimum = False
 
-        while (
-            iter_count < max_iter and non_improving_iter_count < max_non_improving_iter
+        for _ in tqdm(
+            loop_generator(),
+            total=max_iter,
+            desc="Finding MLCST",
+            disable=debug,
+            leave=False,
         ):
+            # Break out condition
+            if (
+                iter_count >= max_iter
+                or non_improving_iter_count >= max_non_improving_iter
+            ):
+                break
+
             if debug:
                 print(
                     f"Iteration {iter_count + 1} / {max_iter} "
@@ -224,12 +266,13 @@ class Solver:
             iter_count += 1
             non_improving_iter_count += 1
 
-            if mlcst.get_leaf_node_count_from_root(root) <= max_leaves:
+            if hot_stop and mlcst.get_leaf_node_count_from_root(root) <= max_leaves:
                 # If the number of leaf nodes is less than or equal to the max leaf count, exit the loop
                 if debug:
                     print(
                         f"Found solution with {mlcst.get_leaf_node_count_from_root(root)} leaf nodes"
                     )
+                best_mlcst = deepcopy(mlcst)
                 break
 
             # Find the best operation to perform exploring the neighborhood of the current solution
@@ -264,6 +307,7 @@ class Solver:
                     # Aspiration criteria
                     # If the swap operation can lead to a new optimum, use it
                     best_swap = candidate_best_swap
+                    found_new_optimum = True
                     current_optimum = candidate_best_swap[2]
                     non_improving_iter_count = 0
                     if debug:
@@ -296,6 +340,9 @@ class Solver:
                 )
             mlcst.add_edge(*best_swap[0])
             mlcst.remove_edge(*best_swap[1])
+            if found_new_optimum:
+                best_mlcst = deepcopy(mlcst)
+                found_new_optimum = False
 
             # Add entering edge to the tabu list
             tabu_list.append(best_swap[0])
@@ -310,7 +357,7 @@ class Solver:
             elif non_improving_iter_count == max_non_improving_iter:
                 print("Reached maximum number of non-improving iterations")
 
-        return mlcst
+        return best_mlcst
 
     def find_mlcst_sa(
         self,
@@ -381,7 +428,11 @@ class Solver:
         non_improving_iter_count = 0
         current_optimum = cost_function(mlcst)
 
-        while temperature >= 1:
+        for _ in tqdm(loop_generator(), desc="Finding MLCST", disable=debug):
+            # Break out condition
+            if temperature < 1:
+                break
+
             if debug:
                 print(f"Iteration {iter_count + 1} " f"(T: {temperature})")
             iter_count += 1
