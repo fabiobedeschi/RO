@@ -35,6 +35,7 @@ def print_title(title: str, line_len: int = None, centered: bool = True):
     """
     (cols, rows) = shutil.get_terminal_size()
     line_len = line_len or cols
+    print()
     print(
         "=" * line_len,
         f"{' ' * (centered * (line_len - len(title)) // 2)}{title}",

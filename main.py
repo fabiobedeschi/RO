@@ -45,6 +45,20 @@ def main():
     )
     print_graph_info(tabu_mlcst)
 
+    print_title("MLCST (simulated annealing)")
+    tabu_mlcst = s.find_mlcst_sa(
+        max_leaves=MAX_LEAVES,
+        root=None,
+        leaf_penalty=None,
+        cost_function=None,
+        initial_temperature=None,
+        cooling_rate=None,
+        cooling_factor=None,
+        hot_stop=False,
+        debug=DEBUG,
+    )
+    print_graph_info(tabu_mlcst)
+
 
 if "__main__" == __name__:
     main()
