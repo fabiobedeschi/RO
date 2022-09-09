@@ -25,6 +25,18 @@ class Graph:
         if edges is not None:
             self.add_edges(edges)
 
+    def __eq__(self, other):
+        """
+        Check if two graphs are equal.
+        """
+        return hash(self) == hash(other)
+
+    def __hash__(self):
+        """
+        Hash the graph.
+        """
+        return hash(tuple(self.get_all_edges()))
+
     def add_edges(self, edges):
         """
         Add multiple edges to the graph.

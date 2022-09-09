@@ -41,9 +41,9 @@ def _init_parser():
             "help": "Leaf penalty.",
         },
         {
-            "flags": ["-s", "--hot-stop"],
-            "type": int,
-            "help": "Hot stop.",
+            "flags": ["--no-hot-stop"],
+            "action": "store_true",
+            "help": "Disable hot stop.",
         },
         {
             "flags": ["-t", "--max-tabu-size"],
@@ -67,6 +67,41 @@ def _init_parser():
             "help": "Cooling factor.",
         },
         {
+            "flags": ["--population-size"],
+            "type": int,
+            "help": "Population size.",
+        },
+        {
+            "flags": ["--no-breeding"],
+            "action": "store_true",
+            "help": "Disable breeding.",
+        },
+        {
+            "flags": ["--no-mutation"],
+            "action": "store_true",
+            "help": "Disable mutation.",
+        },
+        {
+            "flags": ["--no-elitism"],
+            "action": "store_true",
+            "help": "Disable elitism.",
+        },
+        {
+            "flags": ["--breeding-rate"],
+            "type": float,
+            "help": "Breeding rate.",
+        },
+        {
+            "flags": ["--mutation-rate"],
+            "type": float,
+            "help": "Mutation rate.",
+        },
+        {
+            "flags": ["--elitism-rate"],
+            "type": float,
+            "help": "Elitism rate.",
+        },
+        {
             "flags": ["-d", "--debug"],
             "action": "store_true",
             "help": "Debug mode.",
@@ -85,7 +120,7 @@ def _init_parser():
             "flags": ["--mode"],
             "type": str,
             "help": "Search strategies to use.",
-            "choices": ["greedy", "tabu", "sa"],
+            "choices": ["greedy", "tabu", "sa", "genetic"],
             "nargs": "+",
         },
     ]
@@ -112,6 +147,13 @@ def main(
     initial_temperature=None,
     cooling_rate=None,
     cooling_factor=None,
+    population_size=None,
+    breeding=None,
+    mutation=None,
+    elitism=None,
+    breeding_rate=None,
+    mutation_rate=None,
+    elitism_rate=None,
     debug=None,
     multiprocess=None,
     cpu_count=None,
@@ -165,6 +207,25 @@ def main(
         )
         print_graph_info(tabu_mlcst)
 
+    if mode is None or "genetic" in mode:
+        print_title("MLCST (genetic)")
+        genetic_mlcst = s.find_mlcst_genetic(
+            max_leaves=max_leaves,
+            root=root,
+            leaf_penalty=leaf_penalty,
+            max_iter=max_iter,
+            hot_stop=hot_stop,
+            population_size=population_size,
+            breeding=breeding,
+            mutation=mutation,
+            elitism=elitism,
+            breeding_rate=breeding_rate,
+            mutation_rate=mutation_rate,
+            elitism_rate=elitism_rate,
+            debug=debug,
+        )
+        print_graph_info(genetic_mlcst)
+
 
 if "__main__" == __name__:
     parser = _init_parser()
@@ -176,11 +237,18 @@ if "__main__" == __name__:
         max_iter=args.max_iter,
         max_non_improving_iter=args.max_non_improving_iter,
         leaf_penalty=args.leaf_penalty,
-        hot_stop=args.hot_stop,
+        hot_stop=not args.no_hot_stop,
         max_tabu_size=args.max_tabu_size,
         initial_temperature=args.initial_temp,
         cooling_rate=args.cooling_rate,
         cooling_factor=args.cooling_factor,
+        population_size=args.population_size,
+        breeding=not args.no_breeding,
+        mutation=not args.no_mutation,
+        elitism=not args.no_elitism,
+        breeding_rate=args.breeding_rate,
+        mutation_rate=args.mutation_rate,
+        elitism_rate=args.elitism_rate,
         debug=args.debug,
         multiprocess=args.multiprocess,
         cpu_count=args.cpu_count,
