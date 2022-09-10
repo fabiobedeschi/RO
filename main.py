@@ -1,7 +1,9 @@
 from argparse import ArgumentParser
 
+from matplotlib import pyplot as plt
+
 from src.solver import Solver
-from src.utils import graph_from_json, print_graph_info, print_title
+from src.utils import graph_from_json, print_graph_info, print_title, plot_graph
 
 
 def _init_parser():
@@ -120,8 +122,13 @@ def _init_parser():
             "flags": ["--mode"],
             "type": str,
             "help": "Search strategies to use.",
-            "choices": ["greedy", "tabu", "sa", "genetic"],
+            "choices": ["mst", "greedy", "tabu", "sa", "genetic"],
             "nargs": "+",
+        },
+        {
+            "flags": ["--no-plot"],
+            "action": "store_true",
+            "help": "Disable plot.",
         },
     ]
 
@@ -158,16 +165,24 @@ def main(
     multiprocess=None,
     cpu_count=None,
     mode=None,
+    plot=None,
 ):
     g = graph_from_json(data_file)
     s = Solver(graph=g, multiprocess=multiprocess, cpu_count=cpu_count)
+    results = []
 
-    print_title("MST")
-    mst = s.find_mst()
-    print_graph_info(mst)
+    root = root or sorted(g.get_all_nodes())[0]
+
+    if mode is None or "mst" in mode:
+        title = "Minimum Spanning Tree"
+        print_title(title)
+        mst = s.find_mst()
+        print_graph_info(mst)
+        results.append((title, mst))
 
     if mode is None or "greedy" in mode:
-        print_title("MLCST (greedy)")
+        title = "MLCST (greedy)"
+        print_title(title)
         greedy_mlcst = s.find_mlcst_greedy(
             max_leaves=max_leaves,
             root=root,
@@ -178,9 +193,11 @@ def main(
             debug=debug,
         )
         print_graph_info(greedy_mlcst)
+        results.append((title, greedy_mlcst))
 
     if mode is None or "tabu" in mode:
-        print_title("MLCST (tabu)")
+        title = "MLCST (tabu)"
+        print_title(title)
         tabu_mlcst = s.find_mlcst_tabu(
             max_leaves=max_leaves,
             root=root,
@@ -192,10 +209,12 @@ def main(
             debug=debug,
         )
         print_graph_info(tabu_mlcst)
+        results.append((title, tabu_mlcst))
 
     if mode is None or "sa" in mode:
-        print_title("MLCST (simulated annealing)")
-        tabu_mlcst = s.find_mlcst_sa(
+        title = "MLCST (simulated annealing)"
+        print_title(title)
+        sa_mlcst = s.find_mlcst_sa(
             max_leaves=max_leaves,
             root=root,
             leaf_penalty=leaf_penalty,
@@ -205,10 +224,12 @@ def main(
             hot_stop=hot_stop,
             debug=debug,
         )
-        print_graph_info(tabu_mlcst)
+        print_graph_info(sa_mlcst)
+        results.append((title, sa_mlcst))
 
     if mode is None or "genetic" in mode:
-        print_title("MLCST (genetic)")
+        title = "MLCST (genetic)"
+        print_title(title)
         genetic_mlcst = s.find_mlcst_genetic(
             max_leaves=max_leaves,
             root=root,
@@ -225,6 +246,24 @@ def main(
             debug=debug,
         )
         print_graph_info(genetic_mlcst)
+        results.append((title, genetic_mlcst))
+
+    if plot:
+        for el in results:
+            figure, ax = plt.subplots(1, 1, figsize=(6, 6))
+            figure.suptitle(f"{el[0]} - W: {round(el[1].get_total_weight())}")
+            ax.set_title(
+                f"Leaves from root {root}: {el[1].get_leaf_node_count_from_root(root)} ({', '.join(el[1].get_leaf_nodes_from_root(root))})"
+            )
+            plot_graph(g, (figure, ax), edge_color="lightgray")
+            plot_graph(
+                el[1],
+                (figure, ax),
+                edge_color="red",
+                node_color="blue",
+                edge_weight=False,
+            )
+        plt.show()
 
 
 if "__main__" == __name__:
@@ -253,4 +292,5 @@ if "__main__" == __name__:
         multiprocess=args.multiprocess,
         cpu_count=args.cpu_count,
         mode=args.mode,
+        plot=not args.no_plot,
     )

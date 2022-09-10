@@ -97,7 +97,10 @@ class Solver:
         Find a random spanning tree.
         """
         base_graph = base_graph or self._graph
-        st = Graph(directed=base_graph.is_directed())
+        st = Graph(
+            directed=base_graph.is_directed(),
+            coordinates=base_graph.get_all_coordinates(),
+        )
         edges = list(base_graph.get_all_edges())
         random.shuffle(edges)
         for (n1, n2, w) in tqdm(
@@ -115,7 +118,10 @@ class Solver:
         """
         Find the Minimum Spanning Tree using Kruskal's algorithm.
         """
-        mst = Graph(directed=self._graph.is_directed())
+        mst = Graph(
+            directed=self._graph.is_directed(),
+            coordinates=self._graph.get_all_coordinates(),
+        )
         for (n1, n2, w) in tqdm(
             sorted(self._graph.get_all_edges(), key=lambda e: e[2]),
             desc="Finding MST",
@@ -178,84 +184,88 @@ class Solver:
         iter_count = 0
         non_improving_iter_count = 0
         current_best = cost_function(mlcst)
-
-        for _ in tqdm(
-            loop_generator(),
-            total=max_iter,
-            desc="Finding MLCST",
-            disable=debug,
-        ):
-            # Break out condition
-            if (
-                iter_count >= max_iter
-                or non_improving_iter_count >= max_non_improving_iter
+        try:
+            for _ in tqdm(
+                loop_generator(),
+                total=max_iter,
+                desc="Finding MLCST",
+                disable=debug,
             ):
-                break
-
-            if debug:
-                print(
-                    f"Iteration {iter_count + 1} / {max_iter} "
-                    f"(non-improving: {non_improving_iter_count} / {max_non_improving_iter}) "
-                    f"(best: {current_best}) "
-                    f"(leaves: {mlcst.get_leaf_node_count_from_root(root)})"
-                )
-
-            iter_count += 1
-            non_improving_iter_count += 1
-
-            if hot_stop and mlcst.get_leaf_node_count_from_root(root) <= max_leaves:
-                # If the number of leaf nodes is less than or equal to the max leaf count, exit the loop
-                if debug:
-                    print(
-                        f"Found solution with {mlcst.get_leaf_node_count_from_root(root)} leaf nodes"
-                    )
-                break
-
-            # Find the best operation to perform exploring the neighborhood of the current solution
-            # Save elements as (edge_in, edge_out, cost_after_swap)
-            if self._multiprocess:
-                swap_operations = self._explore_neighbourhood_multiprocess(
-                    t=mlcst, root=root, cost_function=cost_function
-                )
-            else:
-                swap_operations = self._explore_neighbourhood(
-                    t=mlcst, root=root, cost_function=cost_function
-                )
-
-            # Find the best swap operation by sorting the swap operations by the calculated objective function
-            best_swap = None
-            for candidate_best_swap in sorted(swap_operations, key=lambda e: e[2]):
-                if candidate_best_swap[2] < current_best:
-                    # If the swap operation can lead to a new best, use it
-                    best_swap = candidate_best_swap
-                    current_best = candidate_best_swap[2]
-                    non_improving_iter_count = 0
-                    if debug:
-                        print(f"\tNew best found: {current_best}")
+                # Break out condition
+                if (
+                    iter_count >= max_iter
+                    or non_improving_iter_count >= max_non_improving_iter
+                ):
                     break
 
-                best_swap = candidate_best_swap
-                break
-
-            if best_swap is None:
-                # If no swap operation can be performed, exit the loop
                 if debug:
-                    print("\tNo swap operation can be performed")
-                break
+                    print(
+                        f"Iteration {iter_count + 1} / {max_iter} "
+                        f"(non-improving: {non_improving_iter_count} / {max_non_improving_iter}) "
+                        f"(best: {current_best}) "
+                        f"(leaves: {mlcst.get_leaf_node_count_from_root(root)})"
+                    )
 
-            # Apply the selected swap operation
+                iter_count += 1
+                non_improving_iter_count += 1
+
+                if hot_stop and mlcst.get_leaf_node_count_from_root(root) <= max_leaves:
+                    # If the number of leaf nodes is less than or equal to the max leaf count, exit the loop
+                    if debug:
+                        print(
+                            f"Found solution with {mlcst.get_leaf_node_count_from_root(root)} leaf nodes"
+                        )
+                    break
+
+                # Find the best operation to perform exploring the neighborhood of the current solution
+                # Save elements as (edge_in, edge_out, cost_after_swap)
+                if self._multiprocess:
+                    swap_operations = self._explore_neighbourhood_multiprocess(
+                        t=mlcst, root=root, cost_function=cost_function
+                    )
+                else:
+                    swap_operations = self._explore_neighbourhood(
+                        t=mlcst, root=root, cost_function=cost_function
+                    )
+
+                # Find the best swap operation by sorting the swap operations by the calculated objective function
+                best_swap = None
+                for candidate_best_swap in sorted(swap_operations, key=lambda e: e[2]):
+                    if candidate_best_swap[2] < current_best:
+                        # If the swap operation can lead to a new best, use it
+                        best_swap = candidate_best_swap
+                        current_best = candidate_best_swap[2]
+                        non_improving_iter_count = 0
+                        if debug:
+                            print(f"\tNew best found: {current_best}")
+                        break
+
+                    best_swap = candidate_best_swap
+                    break
+
+                if best_swap is None:
+                    # If no swap operation can be performed, exit the loop
+                    if debug:
+                        print("\tNo swap operation can be performed")
+                    break
+
+                # Apply the selected swap operation
+                if debug:
+                    print(
+                        f"\tPerforming swap operation: {best_swap[0]} -> {best_swap[1]} (cost: {best_swap[2]})"
+                    )
+                mlcst.add_edge(*best_swap[0])
+                mlcst.remove_edge(*best_swap[1])
+
             if debug:
-                print(
-                    f"\tPerforming swap operation: {best_swap[0]} -> {best_swap[1]} (cost: {best_swap[2]})"
-                )
-            mlcst.add_edge(*best_swap[0])
-            mlcst.remove_edge(*best_swap[1])
+                if iter_count == max_iter:
+                    print("Reached maximum number of iterations")
+                elif non_improving_iter_count == max_non_improving_iter:
+                    print("Reached maximum number of non-improving iterations")
 
-        if debug:
-            if iter_count == max_iter:
-                print("Reached maximum number of iterations")
-            elif non_improving_iter_count == max_non_improving_iter:
-                print("Reached maximum number of non-improving iterations")
+        except KeyboardInterrupt:
+            if debug:
+                print("Keyboard interrupt")
 
         return mlcst
 
@@ -317,105 +327,110 @@ class Solver:
         current_best = cost_function(mlcst)
         found_new_best = False
 
-        for _ in tqdm(
-            loop_generator(),
-            total=max_iter,
-            desc=f"Finding MLCST",
-            disable=debug,
-        ):
-            # Break out condition
-            if (
-                iter_count >= max_iter
-                or non_improving_iter_count >= max_non_improving_iter
+        try:
+            for _ in tqdm(
+                loop_generator(),
+                total=max_iter,
+                desc=f"Finding MLCST",
+                disable=debug,
             ):
-                break
-
-            if debug:
-                print(
-                    f"Iteration {iter_count + 1} / {max_iter} "
-                    f"(non-improving: {non_improving_iter_count} / {max_non_improving_iter}) "
-                    f"(best: {current_best}) "
-                    f"(leaves: {best_mlcst.get_leaf_node_count_from_root(root)})"
-                )
-            iter_count += 1
-            non_improving_iter_count += 1
-
-            if hot_stop and mlcst.get_leaf_node_count_from_root(root) <= max_leaves:
-                # If the number of leaf nodes is less than or equal to the max leaf count, exit the loop
-                if debug:
-                    print(
-                        f"Found solution with {mlcst.get_leaf_node_count_from_root(root)} leaf nodes"
-                    )
-                best_mlcst = deepcopy(mlcst)
-                break
-
-            # Find the best operation to perform exploring the neighborhood of the current solution
-            # Save elements as (edge_in, edge_out, cost_after_swap)
-            if self._multiprocess:
-                swap_operations = self._explore_neighbourhood_multiprocess(
-                    t=mlcst, root=root, cost_function=cost_function
-                )
-            else:
-                swap_operations = self._explore_neighbourhood(
-                    t=mlcst, root=root, cost_function=cost_function
-                )
-
-            # Find the best swap operation by sorting the swap operations by the calculated objective function
-            best_swap = None
-            for candidate_best_swap in sorted(swap_operations, key=lambda e: e[2]):
-                if candidate_best_swap[2] < current_best:
-                    # Aspiration criteria
-                    # If the swap operation can lead to a new best, use it
-                    best_swap = candidate_best_swap
-                    found_new_best = True
-                    current_best = candidate_best_swap[2]
-                    non_improving_iter_count = 0
-                    if debug:
-                        print(f"\tNew best found: {current_best}")
+                # Break out condition
+                if (
+                    iter_count >= max_iter
+                    or non_improving_iter_count >= max_non_improving_iter
+                ):
                     break
 
-                out_n1, out_n2, out_w = candidate_best_swap[1]
-                if any(
-                    tabu_el in {(out_n1, out_n2, out_w), (out_n2, out_n1, out_w)}
-                    for tabu_el in tabu_list
-                ):
-                    # If the leaving edge is in the tabu list skip it
-                    if debug:
-                        print(f"\tSkipping tabu swap: {candidate_best_swap}")
-                    continue
-
-                best_swap = candidate_best_swap
-                break
-
-            if best_swap is None:
-                # If no swap operation can be performed, exit the loop
                 if debug:
-                    print("\tNo swap operation can be performed")
-                break
+                    print(
+                        f"Iteration {iter_count + 1} / {max_iter} "
+                        f"(non-improving: {non_improving_iter_count} / {max_non_improving_iter}) "
+                        f"(best: {current_best}) "
+                        f"(leaves: {best_mlcst.get_leaf_node_count_from_root(root)})"
+                    )
+                iter_count += 1
+                non_improving_iter_count += 1
 
-            # Apply the selected swap operation
+                if hot_stop and mlcst.get_leaf_node_count_from_root(root) <= max_leaves:
+                    # If the number of leaf nodes is less than or equal to the max leaf count, exit the loop
+                    if debug:
+                        print(
+                            f"Found solution with {mlcst.get_leaf_node_count_from_root(root)} leaf nodes"
+                        )
+                    best_mlcst = deepcopy(mlcst)
+                    break
+
+                # Find the best operation to perform exploring the neighborhood of the current solution
+                # Save elements as (edge_in, edge_out, cost_after_swap)
+                if self._multiprocess:
+                    swap_operations = self._explore_neighbourhood_multiprocess(
+                        t=mlcst, root=root, cost_function=cost_function
+                    )
+                else:
+                    swap_operations = self._explore_neighbourhood(
+                        t=mlcst, root=root, cost_function=cost_function
+                    )
+
+                # Find the best swap operation by sorting the swap operations by the calculated objective function
+                best_swap = None
+                for candidate_best_swap in sorted(swap_operations, key=lambda e: e[2]):
+                    if candidate_best_swap[2] < current_best:
+                        # Aspiration criteria
+                        # If the swap operation can lead to a new best, use it
+                        best_swap = candidate_best_swap
+                        found_new_best = True
+                        current_best = candidate_best_swap[2]
+                        non_improving_iter_count = 0
+                        if debug:
+                            print(f"\tNew best found: {current_best}")
+                        break
+
+                    out_n1, out_n2, out_w = candidate_best_swap[1]
+                    if any(
+                        tabu_el in {(out_n1, out_n2, out_w), (out_n2, out_n1, out_w)}
+                        for tabu_el in tabu_list
+                    ):
+                        # If the leaving edge is in the tabu list skip it
+                        if debug:
+                            print(f"\tSkipping tabu swap: {candidate_best_swap}")
+                        continue
+
+                    best_swap = candidate_best_swap
+                    break
+
+                if best_swap is None:
+                    # If no swap operation can be performed, exit the loop
+                    if debug:
+                        print("\tNo swap operation can be performed")
+                    break
+
+                # Apply the selected swap operation
+                if debug:
+                    print(
+                        f"\tPerforming swap operation: {best_swap[0]} -> {best_swap[1]} (cost: {best_swap[2]})"
+                    )
+                mlcst.add_edge(*best_swap[0])
+                mlcst.remove_edge(*best_swap[1])
+                if found_new_best:
+                    best_mlcst = deepcopy(mlcst)
+                    found_new_best = False
+
+                # Add entering edge to the tabu list
+                tabu_list.append(best_swap[0])
+
+                # Remove the oldest element from the tabu list if it is too long
+                if len(tabu_list) > max_tabu_size:
+                    tabu_list.pop(0)
+
             if debug:
-                print(
-                    f"\tPerforming swap operation: {best_swap[0]} -> {best_swap[1]} (cost: {best_swap[2]})"
-                )
-            mlcst.add_edge(*best_swap[0])
-            mlcst.remove_edge(*best_swap[1])
-            if found_new_best:
-                best_mlcst = deepcopy(mlcst)
-                found_new_best = False
+                if iter_count == max_iter:
+                    print("Reached maximum number of iterations")
+                elif non_improving_iter_count == max_non_improving_iter:
+                    print("Reached maximum number of non-improving iterations")
 
-            # Add entering edge to the tabu list
-            tabu_list.append(best_swap[0])
-
-            # Remove the oldest element from the tabu list if it is too long
-            if len(tabu_list) > max_tabu_size:
-                tabu_list.pop(0)
-
-        if debug:
-            if iter_count == max_iter:
-                print("Reached maximum number of iterations")
-            elif non_improving_iter_count == max_non_improving_iter:
-                print("Reached maximum number of non-improving iterations")
+        except KeyboardInterrupt:
+            if debug:
+                print("Keyboard interrupt")
 
         return best_mlcst
 
@@ -440,7 +455,7 @@ class Solver:
         :param leaf_penalty: The penalty for each leaf node in the tree (lower means more leaf nodes can be tolerated), defaults to the highest weight of any edge in the graph
         :param cost_function: The cost function to use to evaluate the solution, defaults to the selected edges weight plus the number of exceeding leaf nodes times the leaf penalty
         :param initial_temperature: The initial temperature of the simulated annealing algorithm, defaults to the number of nodes in the graph times 100
-        :param cooling_rate: The cooling rate of the simulated annealing algorithm, defaults to "exponential"
+        :param cooling_rate: The cooling rate of the simulated annealing algorithm, defaults to "linear"
         :param cooling_factor: The cooling factor of the simulated annealing algorithm, default value depend on the cooling rate chosen
         :param hot_stop: If True, the algorithm will immediately stops if the current respect the condition on the leaves, defaults to False
         :param debug: Whether to print debug information, defaults to False
@@ -464,7 +479,7 @@ class Solver:
         if temperature <= 1:
             raise ValueError("Initial temperature must be greater than 1")
 
-        cooling_rate = (cooling_rate or "exponential").lower()
+        cooling_rate = (cooling_rate or "linear").lower()
         _known_cooling_rates = {"exponential", "linear"}
         if cooling_rate not in _known_cooling_rates:
             raise ValueError(
@@ -489,81 +504,86 @@ class Solver:
         non_improving_iter_count = 0
         current_best = cost_function(mlcst)
 
-        for _ in tqdm(loop_generator(), desc="Finding MLCST", disable=debug):
-            # Break out condition
-            if temperature < 1:
-                break
+        try:
+            for _ in tqdm(loop_generator(), desc="Finding MLCST", disable=debug):
+                # Break out condition
+                if temperature < 1:
+                    break
 
-            if debug:
-                print(
-                    f"Iteration {iter_count + 1} "
-                    f"(T: {temperature}) "
-                    f"(best: {current_best}) "
-                    f"(leaves: {best_mlcst.get_leaf_node_count_from_root(root)})"
-                )
-            iter_count += 1
-            non_improving_iter_count += 1
-
-            if hot_stop and mlcst.get_leaf_node_count_from_root(root) <= max_leaves:
-                # If the number of leaf nodes is less than or equal to the max leaf count, exit the loop
-                # This speeds up the search sacrificing the quality of the solution
                 if debug:
                     print(
-                        f"Found solution with {mlcst.get_leaf_node_count_from_root(root)} leaf nodes"
+                        f"Iteration {iter_count + 1} "
+                        f"(T: {temperature}) "
+                        f"(best: {current_best}) "
+                        f"(leaves: {best_mlcst.get_leaf_node_count_from_root(root)})"
                     )
-                best_mlcst = deepcopy(mlcst)
-                break
+                iter_count += 1
+                non_improving_iter_count += 1
 
-            # Explore the neighborhood of the current solution
-            # Loop over the edges in the graph who are not in the current solution
-            for (n1, n2, w) in self._graph.get_all_edges():
-                if (n1, n2, w) in mlcst.get_all_edges():
-                    continue
+                if hot_stop and mlcst.get_leaf_node_count_from_root(root) <= max_leaves:
+                    # If the number of leaf nodes is less than or equal to the max leaf count, exit the loop
+                    # This speeds up the search sacrificing the quality of the solution
+                    if debug:
+                        print(
+                            f"Found solution with {mlcst.get_leaf_node_count_from_root(root)} leaf nodes"
+                        )
+                    best_mlcst = deepcopy(mlcst)
+                    break
 
-                if not any(
-                    leaf in {n1, n2} for leaf in mlcst.get_leaf_nodes_from_root(root)
-                ):
-                    # If none of the nodes in the edge is a leaf node, skip it
-                    continue
+                # Explore the neighborhood of the current solution
+                # Loop over the edges in the graph who are not in the current solution
+                for (n1, n2, w) in self._graph.get_all_edges():
+                    if (n1, n2, w) in mlcst.get_all_edges():
+                        continue
 
-                cycle_edges = mlcst.get_edges_in_path(path=mlcst.find_path(n1, n2))
-                for (cn1, cn2, cw) in cycle_edges:
-                    # Calculate the cost of the neighbor solution after the swap
-                    tmp_mlcst = deepcopy(mlcst)
-                    tmp_mlcst.add_edge(n1, n2, w)
-                    tmp_mlcst.remove_edge(cn1, cn2, cw)
-
-                    if cost_function(tmp_mlcst) < current_best:
-                        # If the neighbor solution is better than the current solution, use it
-                        mlcst = tmp_mlcst
-                        best_mlcst = deepcopy(tmp_mlcst)
-                        current_best = cost_function(tmp_mlcst)
-                        if debug:
-                            print(f"\tUsing swap: {(n1, n2, w)} -> {(cn1, cn2, cw)}")
-                            print(f"\tNew best found: {current_best}")
-                        break
-
-                    # If the neighbor solution is not better than the current solution,
-                    # use it with a probability that decreases with the temperature
-                    if random.random() < exp(
-                        (current_best - cost_function(tmp_mlcst)) / temperature
+                    if not any(
+                        leaf in {n1, n2} for leaf in mlcst.get_leaf_nodes_from_root(root)
                     ):
-                        if debug:
-                            print(f"\tUsing swap: {(n1, n2, w)} -> {(cn1, cn2, cw)}")
-                        mlcst = tmp_mlcst
-                        break
+                        # If none of the nodes in the edge is a leaf node, skip it
+                        continue
 
-                else:
-                    # Only continue if the inner loop was not broken...
-                    continue
-                # ...otherwise, break the outer loop
-                break
+                    cycle_edges = mlcst.get_edges_in_path(path=mlcst.find_path(n1, n2))
+                    for (cn1, cn2, cw) in cycle_edges:
+                        # Calculate the cost of the neighbor solution after the swap
+                        tmp_mlcst = deepcopy(mlcst)
+                        tmp_mlcst.add_edge(n1, n2, w)
+                        tmp_mlcst.remove_edge(cn1, cn2, cw)
 
-            # Decrease the temperature
-            if cooling_rate == "exponential":
-                temperature *= cooling_factor
-            elif cooling_rate == "linear":
-                temperature -= cooling_factor
+                        if cost_function(tmp_mlcst) < current_best:
+                            # If the neighbor solution is better than the current solution, use it
+                            mlcst = tmp_mlcst
+                            best_mlcst = deepcopy(tmp_mlcst)
+                            current_best = cost_function(tmp_mlcst)
+                            if debug:
+                                print(f"\tUsing swap: {(n1, n2, w)} -> {(cn1, cn2, cw)}")
+                                print(f"\tNew best found: {current_best}")
+                            break
+
+                        # If the neighbor solution is not better than the current solution,
+                        # use it with a probability that decreases with the temperature
+                        if random.random() < exp(
+                            (current_best - cost_function(tmp_mlcst)) / temperature
+                        ):
+                            if debug:
+                                print(f"\tUsing swap: {(n1, n2, w)} -> {(cn1, cn2, cw)}")
+                            mlcst = tmp_mlcst
+                            break
+
+                    else:
+                        # Only continue if the inner loop was not broken...
+                        continue
+                    # ...otherwise, break the outer loop
+                    break
+
+                # Decrease the temperature
+                if cooling_rate == "exponential":
+                    temperature *= cooling_factor
+                elif cooling_rate == "linear":
+                    temperature -= cooling_factor
+
+        except KeyboardInterrupt:
+            if debug:
+                print("Keyboard interrupt")
 
         return best_mlcst
 
@@ -638,89 +658,99 @@ class Solver:
         iter_count = 0
         population = []
 
-        for _ in tqdm(range(max_iter), desc="Finding MLCST", disable=debug):
-            if debug:
-                print(
-                    f"Iteration {iter_count + 1} "
-                    f"(best: {current_best}) "
-                    f"(leaves: {best_mlcst.get_leaf_node_count_from_root(root)})"
-                )
-
-            iter_count += 1
-
-            # Breed the surviving population
-            if breeding:
-                for p1, p2 in combinations(population, 2):
-                    # Create a new individual by combining the two parents with a probability of breeding_rate
-                    if random.random() < breeding_rate:
-                        child = self._find_random_spanning_tree(
-                            base_graph=Graph(
-                                edges=(p1.get_all_edges() | p2.get_all_edges()),
-                                directed=self._graph.is_directed(),
-                            ),
-                            verbose=False,
-                        )
-                        population.append(child)
-
-                    # If the population is full, stop breeding
-                    if len(population) >= population_size:
-                        break
-
-            # Fill the remaining population for this iteration
-            while len(population) < population_size:
-                st = self._find_random_spanning_tree(verbose=False)
-                if st not in population:
-                    population.append(st)
-
-            # Calculate the fitness of each element in the population
-            population = sorted(population, key=cost_function)
-
-            # Starting from the second iteration, mutate the population
-            if mutation and iter_count > 1:
-                for i in range(population_size):
-                    # For each edge in the tree, there is a chance to swap it with a random edge in the graph
-                    for edge in population[i].get_all_edges():
-                        # Probability of edge mutation increases linearly with the worst fitness
-                        if random.random() < (mutation_rate * i / population_size):
-                            # Swap the edge in the tree with a random edge in the graph
-                            available_edges = list(
-                                self._graph.get_all_edges()
-                                - population[i].get_all_edges()
-                            )
-                            random.shuffle(available_edges)
-                            for new_edge in available_edges:
-                                if edge in population[i].get_edges_in_path(
-                                    path=population[i].find_path(
-                                        new_edge[0], new_edge[1]
-                                    )
-                                ):
-                                    population[i].remove_edge(*edge)
-                                    population[i].add_edge(*new_edge)
-                                    break
-
-                # After mutation, recalculate the fitness of each element in the population
-                population = sorted(population, key=cost_function)
-
-            if cost_function(population[0]) < current_best:
-                # If the best element in the population is better than the current best, save as the new best
-                best_mlcst = deepcopy(population[0])
-                current_best = cost_function(population[0])
-                if debug:
-                    print(f"\tNew best found: {current_best}")
-
-            if (
-                hot_stop
-                and best_mlcst.get_leaf_node_count_from_root(root) <= max_leaves
-            ):
-                # If the number of leaf nodes is less than or equal to the max leaf count, exit the loop
-                # This speeds up the search sacrificing the quality of the solution
+        try:
+            for _ in tqdm(range(max_iter), desc="Finding MLCST", disable=debug):
                 if debug:
                     print(
-                        f"Found solution with {best_mlcst.get_leaf_node_count_from_root(root)} leaf nodes"
+                        f"Iteration {iter_count + 1} "
+                        f"(best: {current_best}) "
+                        f"(leaves: {best_mlcst.get_leaf_node_count_from_root(root)})"
                     )
-                break
 
-            # Keep the elitist elements in the population
-            population = population[: (round(population_size * elitism_rate) or 1)] if elitism else []
+                iter_count += 1
+
+                # Breed the surviving population
+                if breeding:
+                    for p1, p2 in combinations(population, 2):
+                        # If the population is full, stop breeding
+                        if len(population) >= population_size:
+                            break
+
+                        # Create a new individual by combining the two parents with a probability of breeding_rate
+                        if random.random() < breeding_rate:
+                            child = self._find_random_spanning_tree(
+                                base_graph=Graph(
+                                    edges=(p1.get_all_edges() | p2.get_all_edges()),
+                                    directed=self._graph.is_directed(),
+                                    coordinates=self._graph.get_all_coordinates(),
+                                ),
+                                verbose=False,
+                            )
+                            population.append(child)
+
+                # Fill the remaining population for this iteration
+                while len(population) < population_size:
+                    st = self._find_random_spanning_tree(verbose=False)
+                    if st not in population:
+                        population.append(st)
+
+                # Calculate the fitness of each element in the population
+                population = sorted(population, key=cost_function)
+
+                # Starting from the second iteration, mutate the population
+                if mutation and iter_count > 1:
+                    for i in range(population_size):
+                        # For each edge in the tree, there is a chance to swap it with a random edge in the graph
+                        for edge in population[i].get_all_edges():
+                            # Probability of edge mutation increases linearly with the worst fitness
+                            if random.random() < (mutation_rate * i / population_size):
+                                # Swap the edge in the tree with a random edge in the graph
+                                available_edges = list(
+                                    self._graph.get_all_edges()
+                                    - population[i].get_all_edges()
+                                )
+                                random.shuffle(available_edges)
+                                for new_edge in available_edges:
+                                    if edge in population[i].get_edges_in_path(
+                                        path=population[i].find_path(
+                                            new_edge[0], new_edge[1]
+                                        )
+                                    ):
+                                        population[i].remove_edge(*edge)
+                                        population[i].add_edge(*new_edge)
+                                        break
+
+                    # After mutation, recalculate the fitness of each element in the population
+                    population = sorted(population, key=cost_function)
+
+                if cost_function(population[0]) < current_best:
+                    # If the best element in the population is better than the current best, save as the new best
+                    best_mlcst = deepcopy(population[0])
+                    current_best = cost_function(population[0])
+                    if debug:
+                        print(f"\tNew best found: {current_best}")
+
+                if (
+                    hot_stop
+                    and best_mlcst.get_leaf_node_count_from_root(root) <= max_leaves
+                ):
+                    # If the number of leaf nodes is less than or equal to the max leaf count, exit the loop
+                    # This speeds up the search sacrificing the quality of the solution
+                    if debug:
+                        print(
+                            f"Found solution with {best_mlcst.get_leaf_node_count_from_root(root)} leaf nodes"
+                        )
+                    break
+
+                # Keep the elitist elements in the population
+                population = (
+                    population[: (round(population_size * elitism_rate) or 1)]
+                    if elitism
+                    else []
+                )
+
+        except KeyboardInterrupt:
+            if debug:
+                print("Keyboard interrupt")
 
         return best_mlcst

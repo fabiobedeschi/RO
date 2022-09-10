@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Union
+from typing import Union, Optional
 
 
 class Graph:
@@ -19,11 +19,13 @@ class Graph:
         )
     """
 
-    def __init__(self, edges=None, directed=False):
+    def __init__(self, edges=None, directed=False, coordinates=None):
         self._edges = defaultdict(set)
         self._directed = directed
         if edges is not None:
             self.add_edges(edges)
+        if coordinates is not None:
+            self._coordinates = coordinates
 
     def __eq__(self, other):
         """
@@ -81,7 +83,7 @@ class Graph:
         """
         return {(node, dest, weight) for dest, weight in self._edges[node]}
 
-    def get_edge_weight(self, node1, node2) -> Union[int, None]:
+    def get_edge_weight(self, node1, node2) -> Optional[int]:
         """
         Get the weight of the edge between two given nodes, None if not found.
         """
@@ -269,3 +271,17 @@ class Graph:
         Get the degree of the node. The number of neighbors of the node.
         """
         return len(self.get_neighbors(node))
+
+    def get_all_coordinates(self) -> dict:
+        """
+        Get the coordinates of the graph.
+        """
+        return self._coordinates
+
+    def get_node_coordinates(self, node) -> Optional[tuple]:
+        """
+        Get the coordinates of the node. None if the node doesn't have coordinates.
+        """
+        if self._coordinates.get(node):
+            return self._coordinates[node]["x"], self._coordinates[node]["y"]
+        return None

@@ -7,6 +7,8 @@ from random import random, randint
 from typing import Union
 
 from fastjsonschema import validate
+from labellines import labelLines
+from matplotlib import pyplot as plt
 
 from src.graph import Graph
 from src.schema import schema
@@ -29,7 +31,8 @@ def graph_from_json(filename):
         for n2, w in data["edges"][n1].items()
     ]
     directed = data["directed"]
-    return Graph(edges, directed)
+    coordinates = data.get("plot")
+    return Graph(edges, directed, coordinates)
 
 
 def print_title(title: str, line_len: int = None, centered: bool = True):
@@ -107,3 +110,32 @@ def loop_generator():
     """
     while True:
         yield
+
+def plot_graph(g: Graph, subplots=None, edge_color="black", node_color="red", edge_weight=False):
+    """
+    Plot a graph with matplotlib.
+    """
+    if subplots is None:
+        subplots = plt.subplots(1, 1)
+
+    for (n1, n2, _) in g.get_all_edges():
+        x1, y1 = g.get_node_coordinates(n1)
+        x2, y2 = g.get_node_coordinates(n2)
+        subplots[1].plot([x1, x2], [y1, y2], color=edge_color, label=str(round(g.get_edge_weight(n1, n2))))
+
+    if edge_weight:
+        labelLines(subplots[1].get_lines(), zorder=2.5)
+
+    x_coords = []
+    y_coords = []
+    labels = []
+    for n in g.get_all_nodes():
+        x, y = g.get_node_coordinates(n)
+        x_coords.append(x)
+        y_coords.append(y)
+        labels.append(n)
+    subplots[1].scatter(x_coords, y_coords, color=node_color)
+    for i, label in enumerate(labels):
+        subplots[1].annotate(label, (x_coords[i], y_coords[i]))
+
+    return subplots

@@ -1,3 +1,5 @@
 fastjsonschema
 tqdm
 multiprocess
+matplotlib
+matplotlib-label-lines
