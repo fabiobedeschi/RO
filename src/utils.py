@@ -111,20 +111,17 @@ def loop_generator():
     while True:
         yield
 
-def plot_graph(g: Graph, subplots=None, edge_color="black", node_color="red", edge_weight=False):
+def plot_graph(g: Graph, ax=None, edge_color="black", node_color="red", edge_weight=False):
     """
     Plot a graph with matplotlib.
     """
-    if subplots is None:
-        subplots = plt.subplots(1, 1)
+    if ax is None:
+        _, ax = plt.subplots(1, 1)
 
     for (n1, n2, _) in g.get_all_edges():
         x1, y1 = g.get_node_coordinates(n1)
         x2, y2 = g.get_node_coordinates(n2)
-        subplots[1].plot([x1, x2], [y1, y2], color=edge_color, label=str(round(g.get_edge_weight(n1, n2))))
-
-    if edge_weight:
-        labelLines(subplots[1].get_lines(), zorder=2.5)
+        ax.plot([x1, x2], [y1, y2], color=edge_color, label=str(round(g.get_edge_weight(n1, n2))))
 
     x_coords = []
     y_coords = []
@@ -134,8 +131,8 @@ def plot_graph(g: Graph, subplots=None, edge_color="black", node_color="red", ed
         x_coords.append(x)
         y_coords.append(y)
         labels.append(n)
-    subplots[1].scatter(x_coords, y_coords, color=node_color)
+    ax.scatter(x_coords, y_coords, color=node_color)
     for i, label in enumerate(labels):
-        subplots[1].annotate(label, (x_coords[i], y_coords[i]))
+        ax.annotate(label, (x_coords[i], y_coords[i]))
 
-    return subplots
+    return ax

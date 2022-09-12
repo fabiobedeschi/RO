@@ -174,7 +174,7 @@ def main(
     root = root or sorted(g.get_all_nodes())[0]
 
     if mode is None or "mst" in mode:
-        title = "Minimum Spanning Tree"
+        title = "MST"
         print_title(title)
         mst = s.find_mst()
         print_graph_info(mst)
@@ -249,16 +249,24 @@ def main(
         results.append((title, genetic_mlcst))
 
     if plot:
-        for el in results:
-            figure, ax = plt.subplots(1, 1, figsize=(6, 6))
-            figure.suptitle(f"{el[0]} - W: {round(el[1].get_total_weight())}")
-            ax.set_title(
-                f"Leaves from root {root}: {el[1].get_leaf_node_count_from_root(root)} ({', '.join(el[1].get_leaf_nodes_from_root(root))})"
+        rows = cols = 1
+        while rows * cols < len(results):
+            if cols > rows:
+                rows += 1
+            else:
+                cols += 1
+        fig = plt.figure(constrained_layout=True, figsize=(cols * 4, rows * 4))
+        for i, el in enumerate(results):
+            ax = fig.add_subplot(rows, cols, i + 1)
+            ax.title.set_text(
+                f"{el[0]} - W: {round(el[1].get_total_weight())}"
+                "\n"
+                f"#leaves from {root}: {el[1].get_leaf_node_count_from_root(root)} ({', '.join(el[1].get_leaf_nodes_from_root(root))})"
             )
-            plot_graph(g, (figure, ax), edge_color="lightgray")
+            plot_graph(g, ax, edge_color="lightgray")
             plot_graph(
                 el[1],
-                (figure, ax),
+                ax,
                 edge_color="red",
                 node_color="blue",
                 edge_weight=False,
