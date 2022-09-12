@@ -192,7 +192,7 @@ def main(
             hot_stop=hot_stop,
             debug=debug,
         )
-        print_graph_info(greedy_mlcst)
+        print_graph_info(g=greedy_mlcst, root=root)
         results.append((title, greedy_mlcst))
 
     if mode is None or "tabu" in mode:
@@ -208,7 +208,7 @@ def main(
             hot_stop=hot_stop,
             debug=debug,
         )
-        print_graph_info(tabu_mlcst)
+        print_graph_info(g=tabu_mlcst, root=root)
         results.append((title, tabu_mlcst))
 
     if mode is None or "sa" in mode:
@@ -224,7 +224,7 @@ def main(
             hot_stop=hot_stop,
             debug=debug,
         )
-        print_graph_info(sa_mlcst)
+        print_graph_info(g=sa_mlcst, root=root)
         results.append((title, sa_mlcst))
 
     if mode is None or "genetic" in mode:
@@ -245,7 +245,7 @@ def main(
             elitism_rate=elitism_rate,
             debug=debug,
         )
-        print_graph_info(genetic_mlcst)
+        print_graph_info(g=genetic_mlcst, root=root)
         results.append((title, genetic_mlcst))
 
     if plot:
@@ -261,7 +261,7 @@ def main(
             ax.title.set_text(
                 f"{el[0]} - W: {round(el[1].get_total_weight())}"
                 "\n"
-                f"#leaves from {root}: {el[1].get_leaf_node_count_from_root(root)} ({', '.join(el[1].get_leaf_nodes_from_root(root))})"
+                f"#leaves from {root}: {el[1].get_leaf_node_count_from_root(root)} ({', '.join(sorted(el[1].get_leaf_nodes_from_root(root)))})"
             )
             plot_graph(g, ax, edge_color="lightgray")
             plot_graph(

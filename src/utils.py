@@ -60,11 +60,11 @@ def print_graph_info(g: Graph, root: str = None):
     print("weight:", g.get_total_weight())
     print("is tree:", g.is_tree())
     print("root:", root)
-    print("leaf node from root:", g.get_leaf_nodes_from_root(root))
+    print("leaf node from root:", sorted(g.get_leaf_nodes_from_root(root)))
     print("leaf count from root:", g.get_leaf_node_count_from_root(root))
     print("degree of root node:", g.get_degree(root))
     print("edge count:", g.get_edge_count())
-    print("edges:", g.get_all_edges())
+    print("edges:", sorted(g.get_all_edges(), key=lambda x: x[0]))
 
 
 def generate_random_data_file(node_count, complete=True, max_dim=100, filename=None):
@@ -111,7 +111,10 @@ def loop_generator():
     while True:
         yield
 
-def plot_graph(g: Graph, ax=None, edge_color="black", node_color="red", edge_weight=False):
+
+def plot_graph(
+    g: Graph, ax=None, edge_color="black", node_color="red", edge_weight=False
+):
     """
     Plot a graph with matplotlib.
     """
@@ -121,7 +124,12 @@ def plot_graph(g: Graph, ax=None, edge_color="black", node_color="red", edge_wei
     for (n1, n2, _) in g.get_all_edges():
         x1, y1 = g.get_node_coordinates(n1)
         x2, y2 = g.get_node_coordinates(n2)
-        ax.plot([x1, x2], [y1, y2], color=edge_color, label=str(round(g.get_edge_weight(n1, n2))))
+        ax.plot(
+            [x1, x2],
+            [y1, y2],
+            color=edge_color,
+            label=str(round(g.get_edge_weight(n1, n2))),
+        )
 
     x_coords = []
     y_coords = []
@@ -131,8 +139,8 @@ def plot_graph(g: Graph, ax=None, edge_color="black", node_color="red", edge_wei
         x_coords.append(x)
         y_coords.append(y)
         labels.append(n)
-    ax.scatter(x_coords, y_coords, color=node_color)
+    ax.scatter(x_coords, y_coords, color=node_color, zorder=10)
     for i, label in enumerate(labels):
-        ax.annotate(label, (x_coords[i], y_coords[i]))
+        ax.annotate(label, (x_coords[i], y_coords[i]), zorder=11)
 
     return ax
